@@ -4,41 +4,33 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/aaronlp/qfifo/cmd"
+	"github.com/aaronlp/qfifo/internal/config"
 	"github.com/aaronlp/qfifo/queues"
 )
 
 func main() {
-	args := os.Args[1:]
+	cfg := config.Load()
 
-	if args[0] == "list" {
-		queues.ListQueues()
-		os.Exit(0)
+	queues.Init(cfg)
+
+	switch os.Args[1] {
+	case "list-queues":
+		cmd.ListQueues()
+	case "create-queue":
+		cmd.CreateQueue(os.Args[2])
+	case "queue-stats":
+		cmd.QueueStats(os.Args[2])
+	case "push":
+		cmd.Push(os.Args[2], os.Args[3])
+	case "pop":
+		cmd.Pop(os.Args[2])
+	case "help":
+		cmd.Help()
+	default:
+		fmt.Println("Unknown command: ", os.Args[1])
+		os.Exit(1)
 	}
 
-	if args[0] == "create" && len(args) == 2 {
-		_, err := queues.CreateQueue(args[1])
-
-		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
-
-		fmt.Println("Queue was created")
-		os.Exit(0)
-	}
-
-	if args[0] == "stats" && len(args) == 2 {
-		size, err := queues.GetQueueSize(args[1])
-
-		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
-
-		fmt.Println(size)
-		os.Exit(0)
-	}
-
-	fmt.Println("Options are 'list' or 'create <queueName>'")
-	os.Exit(1)
+	os.Exit(0)
 }

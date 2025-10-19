@@ -9,21 +9,18 @@ import (
 	"strings"
 )
 
-const queueLocation = "data/queues"
-const queueDataLocation = "data/queueData"
-
 func CreateQueue(name string) (bool, error) {
 	if QueueExists(name) {
 		return false, errors.New("Queue already exists. Not created.")
 	}
 
-	err := os.MkdirAll(buildQueuePath(name), 0750)
+	err := os.MkdirAll(buildQueuePath(name), 0755)
 
 	if err != nil && !os.IsExist(err) {
 		return false, errors.New("Unable to create queue.")
 	}
 
-	err = os.MkdirAll(buildQueueDataPath(name), 0750)
+	err = os.MkdirAll(buildQueueDataPath(name), 0755)
 
 	if err != nil && !os.IsExist(err) {
 		return false, errors.New("Unable to create queue.")
@@ -54,32 +51,21 @@ func QueueExists(queueName string) bool {
 	return info != nil && info.IsDir()
 }
 
-func getQueuesPath() string {
-	return strings.Join([]string{".", queueLocation}, "/")
-}
-
-func buildQueuePath(queueName string) string {
-	return strings.Join([]string{getQueuesPath(), queueName}, "/")
-}
-
-func getQueuesDataPath() string {
-	return strings.Join([]string{".", queueDataLocation}, "/")
-}
-
-func buildQueueDataPath(queueName string) string {
-	return strings.Join([]string{getQueuesDataPath(), queueName}, "/")
-}
-
-func ListQueues() {
-	files, err := os.ReadDir(getQueuesPath())
+// GetQueuesNames returns an array of all current queue names
+func GetQueueNames() []string {
+	files, err := os.ReadDir(queueLocation)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for _, file := range files {
-		fmt.Println(file.Info())
+	list := make([]string, len(files))
+
+	for i, file := range files {
+		list[i] = file.Name()
 	}
+
+	return list
 }
 
 func getQueueCurrentOffset(queueName string) (int, error) {
@@ -90,10 +76,8 @@ func getQueueCurrentOffset(queueName string) (int, error) {
 		return 0, err
 	}
 
-	// Remove any whitespace/newlines
 	str := strings.TrimSpace(string(data))
 
-	// Convert string to int
 	num, err := strconv.Atoi(str)
 	if err != nil {
 		return 0, err
@@ -110,10 +94,8 @@ func getQueueLastOffset(queueName string) (int, error) {
 		return 0, err
 	}
 
-	// Remove any whitespace/newlines
 	str := strings.TrimSpace(string(data))
 
-	// Convert string to int
 	num, err := strconv.Atoi(str)
 	if err != nil {
 		return 0, err
@@ -133,5 +115,25 @@ func GetQueueSize(queueName string) (int, error) {
 		return 0, err
 	}
 
-	return (last - current) + 1, nil
+	return last - current, nil
+}
+
+// GetQueueStats returns the current size, starting offset and ending offset of the queue
+func GetQueueStats(queueName string) (int, int, int, error) {
+	size, err := GetQueueSize(queueName)
+	if err != nil {
+		return -1, -1, -1, err
+	}
+
+	current, err := getQueueCurrentOffset(queueName)
+	if err != nil {
+		return -1, -1, -1, err
+	}
+
+	last, err := getQueueLastOffset(queueName)
+	if err != nil {
+		return -1, -1, -1, err
+	}
+
+	return size, current, last, nil
 }
